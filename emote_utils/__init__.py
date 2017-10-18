@@ -30,11 +30,11 @@ class NoSuffixError(SocialsError):
 
 
 @attrs
-class suffix:
+class Suffix:
     """A suffix as returned by get_suffixes."""
 
     func = attrib()
-    names = attrib(default=Factory(list))
+    names = attrib()
 
 
 @attrs
@@ -161,3 +161,11 @@ class SocialsFactory:
 
         string = re.sub(object_re, repl, string)
         return (string, perspectives)
+
+    def get_suffixes(self):
+        """Return a list of suffix objects."""
+        d = {}
+        for name, func in self.suffixes.items():
+            d[func] = d.get(func, [])
+            d[func].append(name)
+        return [Suffix(func, sorted(names)) for func, names in d.items()]

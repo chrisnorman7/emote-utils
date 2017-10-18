@@ -1,7 +1,7 @@
 from pytest import raises
 from attr import attrs, attrib
 from emote_utils import SocialsFactory, NoSuffixError, NoObjectError, \
-     NoNamesError
+     NoNamesError, Suffix
 
 
 @attrs
@@ -23,7 +23,7 @@ def name(obj, suffix):
 
 
 @f.suffix('his', 'her')
-def get_gender(obj, suffix):
+def gender(obj, suffix):
     return ('your', obj.gender)
 
 
@@ -76,3 +76,16 @@ def test_suffix_error():
 def test_object_error():
     with raises(NoObjectError):
         f.get_strings('%2n', [boy])
+
+
+def test_get_suffixes():
+    r = f.get_suffixes()
+    assert len(r) == 2
+    assert isinstance(r[0], Suffix)
+    assert isinstance(r[1], Suffix)
+    assert r[0].func in [name, gender]
+    assert r[0].func in [name, gender]
+    if r[0].func is name:
+        assert r[0].names == ['n', 'name']
+    else:
+        assert r[0].names == ['his', 'her']
