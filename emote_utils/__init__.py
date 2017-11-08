@@ -79,8 +79,8 @@ class SocialsFactory:
 
         By default this means you could provide a single % and get %1n.
 
-        Make the suffixes upper case to have the strings rendered in title
-        case.
+        Make the suffixes upper case to have the strings rendered with their
+        first letter capitalised.
 
         If a double percent sign is used (E.G.: "%%") a single per cent sign is
         inserted. This behaviour can of course be modified by passing a percent
@@ -120,8 +120,8 @@ class SocialsFactory:
                 )
             this, other = func(obj, suffix)
             if suffix.isupper():
-                this = this.title()
-                other = other.title()
+                this = this.capitalize()
+                other = other.capitalize()
             for pos, perspective in enumerate(perspectives):
                 if obj is perspective:
                     replacements[pos].append(this)
