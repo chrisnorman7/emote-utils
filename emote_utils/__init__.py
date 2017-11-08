@@ -2,7 +2,7 @@ import re
 from attr import attrs, attrib, Factory
 
 object_re = re.compile(r'(\{([^}]+)})')  # Used for matching objects.
-suffix_re = re.compile(r'(%([0-9]*)([a-zA-Z]*))')
+suffix_re = re.compile(r'(%([0-9]*)([a-zA-Z]*)(?:[|]([a-zA-Z]*))?)')
 
 
 class SocialsError(Exception):
@@ -29,6 +29,10 @@ class NoSuffixError(SocialsError):
     """No such suffix."""
 
 
+class NoFilterError(SocialsError):
+    """No such filter."""
+
+
 @attrs
 class Suffix:
     """A suffix as returned by get_suffixes."""
@@ -44,8 +48,32 @@ class SocialsFactory:
     To add a suffix decorate a function with the suffix decorator."""
 
     suffixes = attrib(default=Factory(dict))
+    filters = attrib(default=Factory(dict))
     default_index = attrib(default=Factory(int))
     default_suffix = attrib(default=Factory(lambda: 'n'))
+
+    def __attrs_post_init__(self):
+        for name in ('normal', 'title', 'upper', 'lower'):
+            self.filters[name] = getattr(self, name)
+
+    def normal(self, value):
+        """Capitalise the first letter of value."""
+        if value:
+            return value[0].upper() + value[1:]
+        else:
+            return ''
+
+    def title(self, value):
+        """Return value in title case."""
+        return value.title()
+
+    def upper(self, value):
+        """Return value in upper case."""
+        return value.upper()
+
+    def lower(self, value):
+        """Return value in lower case."""
+        return value.lower()
 
     def suffix(self, *names):
         """Add a suffix accessible by any of names.
@@ -95,9 +123,9 @@ class SocialsFactory:
         replacements = [[] for p in perspectives]  # Formatter strings.
         default_replacements = []  # The replacements shown to everyone else.
 
-        def match_suffix(match):
+        def repl(match):
             """Match the suffix in the suffixes dictionary."""
-            whole, index, suffix = match.groups()
+            whole, index, suffix, filter_name = match.groups()
             if index:
                 index = int(index) - 1
             else:
@@ -119,9 +147,13 @@ class SocialsFactory:
                     )
                 )
             this, other = func(obj, suffix)
-            if suffix.isupper():
-                this = this.capitalize()
-                other = other.capitalize()
+            if filter_name is not None:
+                if filter_name in self.filters:
+                    filter_func = self.filters[filter_name]
+                else:
+                    raise NoFilterError(f'Invalid filter: {filter_name}.')
+                this = filter_func(this)
+                other = filter_func(other)
             for pos, perspective in enumerate(perspectives):
                 if obj is perspective:
                     replacements[pos].append(this)
@@ -130,7 +162,7 @@ class SocialsFactory:
             default_replacements.append(other)
             return '{}'
 
-        default = re.sub(suffix_re, match_suffix, string)
+        default = re.sub(suffix_re, repl, string)
         for args in replacements:
             strings.append(default.format(*args, **kwargs))
         strings.append(default.format(*default_replacements, **kwargs))
@@ -169,3 +201,7 @@ class SocialsFactory:
             d[func] = d.get(func, [])
             d[func].append(name)
         return [Suffix(func, sorted(names)) for func, names in d.items()]
+
+    def get_filters(self):
+        """Return all filters as a dictionary."""
+        return self.filters

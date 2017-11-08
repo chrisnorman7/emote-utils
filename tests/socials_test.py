@@ -58,7 +58,7 @@ def test_multiple():
 
 
 def test_title():
-    strings = f.get_strings('%N smiles.', [boy])
+    strings = f.get_strings('%|title smiles.', [boy])
     assert strings == ['You smiles.', 'Bill smiles.']
 
 
