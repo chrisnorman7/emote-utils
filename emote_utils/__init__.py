@@ -147,7 +147,8 @@ class SocialsFactory:
                     )
                 )
             this, other = func(obj, suffix)
-            if filter_name is not None:
+            if filter_name:
+                filter_name = filter_name.lower()
                 if filter_name in self.filters:
                     filter_func = self.filters[filter_name]
                 else:

@@ -89,3 +89,15 @@ def test_get_suffixes():
         assert r[0].names == ['n', 'name']
     else:
         assert r[0].names == ['his', 'her']
+
+
+def test_empty_filter_name():
+    expected = ['you', boy.name]
+    strings = f.get_strings('%1n|', [boy])
+    assert strings == expected
+
+
+def test_filter():
+    expected = ['YOU', boy.name.upper()]
+    strings = f.get_strings('%1n|upper', [boy])
+    assert strings == expected
