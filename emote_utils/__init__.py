@@ -1,6 +1,12 @@
 import re
 from attr import attrs, attrib, Factory
 
+__all__ = [
+    'SocialsError', 'object_re', 'suffix_re', 'NoMatchError', 'NoNamesError',
+    'DuplicateNameError', 'NoObjectError', 'NoSuffixError', 'NoFilterError',
+    'Suffix', 'SocialsFactory'
+]
+
 object_re = re.compile(r'(\{([^}]+)})')  # Used for matching objects.
 suffix_re = re.compile(r'(%([0-9]*)([a-zA-Z]*)(?:[|]([a-zA-Z]*))?)')
 
