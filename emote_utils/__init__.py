@@ -57,6 +57,9 @@ class SocialsFactory:
     filters = attrib(default=Factory(dict))
     default_index = attrib(default=Factory(int))
     default_suffix = attrib(default=Factory(lambda: 'n'))
+    lower_case_filter = attrib(default=Factory(lambda: None))
+    title_case_filter = attrib(default=Factory(lambda: 'normal'))
+    upper_case_filter = attrib(default=Factory(lambda: 'upper'))
 
     def __attrs_post_init__(self):
         for name in ('normal', 'title', 'upper', 'lower'):
@@ -153,11 +156,16 @@ class SocialsFactory:
                     )
                 )
             this, other = func(obj, suffix)
-            if filter_name:
-                filter_name = filter_name.lower()
-                if filter_name in self.filters:
-                    filter_func = self.filters[filter_name]
+            if not filter_name:
+                if suffix.istitle():
+                    filter_name = self.title_case_filter
+                elif suffix.isupper():
+                    filter_name = self.upper_case_filter
                 else:
+                    filter_name = self.lower_case_filter
+            if filter_name:
+                filter_func = self.filters.get(filter_name, None)
+                if filter_func is None:
                     raise NoFilterError(f'Invalid filter: {filter_name}.')
                 this = filter_func(this)
                 other = filter_func(other)

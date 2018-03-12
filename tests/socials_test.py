@@ -1,7 +1,8 @@
 from pytest import raises
 from attr import attrs, attrib
-from emote_utils import SocialsFactory, NoSuffixError, NoObjectError, \
-     NoNamesError, Suffix
+from emote_utils import (
+    SocialsFactory, NoSuffixError, NoObjectError, NoNamesError, Suffix
+)
 
 
 @attrs
