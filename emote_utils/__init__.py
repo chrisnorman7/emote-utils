@@ -144,17 +144,10 @@ class SocialsFactory:
             try:
                 obj = perspectives[index]
             except IndexError:
-                raise NoObjectError(
-                    f'{index + 1} is not in the list of objects.'
-                )
+                obj = self.no_object(index)  # May raise.
             func = self.suffixes.get(suffix.lower(), None)
             if func is None:
-                raise NoSuffixError(
-                    '%s is not a valid suffix. Valid suffixes: %s.' % (
-                        suffix,
-                        ', '.join(sorted(self.suffixes.keys()))
-                    )
-                )
+                func = self.no_suffix(obj, suffix)  # May raise.
             this, other = func(obj, suffix)
             if not filter_name:
                 if suffix.istitle():
@@ -182,6 +175,21 @@ class SocialsFactory:
             strings.append(default.format(*args, **kwargs))
         strings.append(default.format(*default_replacements, **kwargs))
         return strings
+
+    def no_object(self, index):
+        """No object was found at the given index. By this point index will be
+        0-based."""
+        raise NoObjectError(
+            f'{index + 1} is not in the list of objects.'
+        )
+
+    def no_suffix(self, obj, name):
+        """No suffix was found for obj with the given name."""
+        raise NoSuffixError(
+            '%s is not a valid suffix. Valid suffixes: %s.' % (
+                name, ', '.join(sorted(self.suffixes.keys()))
+            )
+        )
 
     def convert_emote_string(
         self, string, match, perspectives, *args, **kwargs
