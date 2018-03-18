@@ -4,7 +4,7 @@ from attr import attrs, attrib, Factory
 __all__ = [
     'SocialsError', 'object_re', 'suffix_re', 'NoMatchError', 'NoNamesError',
     'DuplicateNameError', 'NoObjectError', 'NoSuffixError', 'NoFilterError',
-    'Suffix', 'SocialsFactory'
+    'Suffix', 'SocialsFactory', 'PopulatedSocialsFactory'
 ]
 
 object_re = re.compile(r'(\{([^}]+)})')  # Used for matching objects.
@@ -220,3 +220,30 @@ class SocialsFactory:
     def get_filters(self):
         """Return all filters as a dictionary."""
         return self.filters
+
+
+class PopulatedSocialsFactory(SocialsFactory):
+    """A SocialsFactory instance with some useful suffixes applied."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.suffix('s')(self.get_s)
+        self.suffix('e', 'es')(self.get_es)
+        self.suffix('y', 'ies')(self.get_y)
+        self.suffix('are', 'is')(self.get_are)
+
+    def get_s(self, obj, suffix):
+        """"" or "s"."""
+        return '', 's'
+
+    def get_es(self, obj, suffix):
+        """"" or "es"."""
+        return '', 'es'
+
+    def get_y(self, obj, suffix):
+        """"y" or "ies"."""
+        return 'y', 'ies'
+
+    def get_are(self, obj, suffix):
+        """"are" or "is"."""
+        return ('are', 'is')
