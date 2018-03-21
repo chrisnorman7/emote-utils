@@ -170,6 +170,8 @@ class SocialsFactory:
     upper_case_filter = attrib(default=Factory(lambda: 'upper'))
     repl_class = attrib(default=Factory(lambda: SocialsRepl))
     emote_class = attrib(default=Factory(lambda: EmoteRepl))
+    object_re = attrib(default=Factory(lambda: object_re))
+    suffix_re = attrib(default=Factory(lambda: suffix_re))
 
     def __attrs_post_init__(self):
         for name in ('normal', 'title', 'upper', 'lower'):
@@ -242,7 +244,7 @@ class SocialsFactory:
         replacements = [[] for p in perspectives]  # Formatter strings.
         replacements.append([])  # Default replacements.
         repl = self.repl_class(self, perspectives, replacements)
-        default = re.sub(suffix_re, repl.repl, string)
+        default = re.sub(self.suffix_re, repl.repl, string)
         for args in repl.replacements:
             strings.append(default.format(*args, **kwargs))
         return strings
@@ -291,7 +293,7 @@ class SocialsFactory:
         function after the match string.
         The perspectives string will be extended by this function."""
         repl = self.emote_class(self, perspectives, match, args, kwargs)
-        string = re.sub(object_re, repl.repl, string)
+        string = re.sub(self.object_re, repl.repl, string)
         return (string, perspectives)
 
     def get_suffixes(self):
