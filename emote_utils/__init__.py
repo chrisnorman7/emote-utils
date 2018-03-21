@@ -12,7 +12,54 @@ suffix_re = re.compile(r'(%([0-9]*)([a-zA-Z]*)(?:[|]([a-zA-Z]*))?)')
 
 
 @attrs
-class SocialsRepl:
+class _ReplBase:
+    """Subclassed by SocialsRepl and EmoteRepl."""
+
+    factory = attrib()
+    perspectives = attrib()
+
+
+@attrs
+class EmoteRepl(_ReplBase):
+    """
+    Subclass this class to alter the functionality of the match code of
+    SocialsFactory.convert_emote_string then pass the new instance as the
+    emote_class keyword argument to SocialsFactory.__init__.
+
+    The factory attribute will be the instance of SocialsFactory that
+    convert_emote_string is being called on.
+    The perspectives attribute will be the list of objects that
+    convert_emote_string will be using.
+    The match attribute will be the function that the repl method should use to
+    get objects from match strings.
+    The match_args attribute should be passed after match_string to the match
+    function.
+    match_kwargs should be passed as keyword arguments to the match function.
+
+    By default before re.sub is called from
+    SocialsFactory.convert_emote_string, an instance of the supplied class is
+    created with the factory, the list of objects, the match function, extra
+    match args, and extra match kwargs as positional arguments.
+    """
+
+    match = attrib()
+    match_args = attrib()
+    match_kwargs = attrib()
+
+    def repl(self, match):
+        full, match_string = match.groups()
+        obj = self.match(match_string, *self.match_args, **self.match_kwargs)
+        if obj is None:
+            obj = self.factory.no_match(
+                match_string, *self.match_args, **self.match_kwargs
+            )  # May raise.
+        if obj not in self.perspectives:
+            self.perspectives.append(obj)
+        return f'%{self.perspectives.index(obj) + 1}'
+
+
+@attrs
+class SocialsRepl(_ReplBase):
     """
     Subclass this class to alter the functionality of the match code of
     SocialsFactory.get_strings then pass the new instance as the repl_class
@@ -29,8 +76,6 @@ class SocialsRepl:
     of the list of objects as positional arguments.
     """
 
-    factory = attrib()
-    perspectives = attrib()
     replacements = attrib()
 
     def repl(self, match):
@@ -124,6 +169,7 @@ class SocialsFactory:
     title_case_filter = attrib(default=Factory(lambda: 'normal'))
     upper_case_filter = attrib(default=Factory(lambda: 'upper'))
     repl_class = attrib(default=Factory(lambda: SocialsRepl))
+    emote_class = attrib(default=Factory(lambda: EmoteRepl))
 
     def __attrs_post_init__(self):
         for name in ('normal', 'title', 'upper', 'lower'):
@@ -220,9 +266,14 @@ class SocialsFactory:
         )
 
     def no_filter(self, obj, name):
-        """Should either return a filter function or raise an instance of
-        NoFilterError."""
+        """No filter found by that name. Should either return a filter function
+        or raise an instance of NoFilterError."""
         raise NoFilterError(f'Invalid filter: {name}.')
+
+    def no_match(self, name, *args, **kwargs):
+        """No object was found matching that name. Should either return an
+        object or raise an instance of NoMatchError."""
+        raise NoMatchError(name)
 
     def convert_emote_string(
         self, string, match, perspectives, *args, **kwargs
@@ -232,22 +283,15 @@ class SocialsFactory:
         to
         % smiles at %2n
         Returns (string, perspectives) ready to be fed into get_strings.
+
         The match function will be used to convert match strings to objects,
-        and should return just the object. If it returns None,
-        All extra arguments and keyword arguments will be passed after the
-        match string.
+        and should return just the object. If it returns None, self.no_match
+        will be called with the same set of arguments.
+        All extra arguments and keyword arguments will be passed to the match
+        function after the match string.
         The perspectives string will be extended by this function."""
-
-        def repl(m):
-            full, match_string = m.groups()
-            obj = match(match_string, *args, **kwargs)
-            if obj is None:
-                raise NoMatchError(match_string)
-            if obj not in perspectives:
-                perspectives.append(obj)
-            return f'%{perspectives.index(obj) + 1}'
-
-        string = re.sub(object_re, repl, string)
+        repl = self.emote_class(self, perspectives, match, args, kwargs)
+        string = re.sub(object_re, repl.repl, string)
         return (string, perspectives)
 
     def get_suffixes(self):
