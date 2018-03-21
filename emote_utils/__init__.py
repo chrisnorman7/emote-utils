@@ -4,11 +4,74 @@ from attr import attrs, attrib, Factory
 __all__ = [
     'SocialsError', 'object_re', 'suffix_re', 'NoMatchError', 'NoNamesError',
     'DuplicateNameError', 'NoObjectError', 'NoSuffixError', 'NoFilterError',
-    'Suffix', 'SocialsFactory', 'PopulatedSocialsFactory'
+    'Suffix', 'SocialsFactory', 'PopulatedSocialsFactory', 'SocialsRepl'
 ]
 
 object_re = re.compile(r'(\{([^}]+)})')  # Used for matching objects.
 suffix_re = re.compile(r'(%([0-9]*)([a-zA-Z]*)(?:[|]([a-zA-Z]*))?)')
+
+
+@attrs
+class SocialsRepl:
+    """
+    Subclass this class to alter the functionality of the match code of
+    SocialsFactory.get_strings then pass the new instance as the repl_class
+    keyword argument to SocialsFactory.__init__.
+
+    The factory argument will be the instance of SocialsFactory that
+    get_strings is being called on.
+    The perspectives argument will be the list of objects that get_strings will
+    be using.
+
+    By default before re.sub is called from SocialsFactory.get_strings, an
+    instance of the supplied class is created with the factory, the list of
+    objects, and a blank list of replacements with a length 1 greater than that
+    of the list of objects as positional arguments.
+    """
+
+    factory = attrib()
+    perspectives = attrib()
+    replacements = attrib()
+
+    def repl(self, match):
+        """Match the suffix in the suffixes dictionary."""
+        whole, index, suffix, filter_name = match.groups()
+        if index:
+            index = int(index) - 1
+        else:
+            index = self.factory.default_index
+        if not suffix:
+            suffix = self.factory.default_suffix
+        try:
+            obj = self.perspectives[index]
+        except IndexError:
+            obj = self.factory.no_object(index)  # May raise.
+        func = self.factory.suffixes.get(suffix.lower(), None)
+        if func is None:
+            func = self.factory.no_suffix(obj, suffix)  # May raise.
+        this, other = func(obj, suffix)
+        if not filter_name:
+            if suffix.istitle():
+                filter_name = self.factory.title_case_filter
+            elif suffix.isupper():
+                filter_name = self.factory.upper_case_filter
+            else:
+                filter_name = self.factory.lower_case_filter
+        if filter_name:
+            filter_func = self.factory.filters.get(filter_name, None)
+            if filter_func is None:
+                filter_func = self.factory.no_filter(
+                    obj, filter_name
+                )  # May raise.
+            this = filter_func(this)
+            other = filter_func(other)
+        for pos, perspective in enumerate(self.perspectives):
+            if obj is perspective:
+                self.replacements[pos].append(this)
+            else:
+                self.replacements[pos].append(other)
+        self.replacements[-1].append(other)
+        return '{}'
 
 
 class SocialsError(Exception):
@@ -60,6 +123,7 @@ class SocialsFactory:
     lower_case_filter = attrib(default=Factory(lambda: None))
     title_case_filter = attrib(default=Factory(lambda: 'normal'))
     upper_case_filter = attrib(default=Factory(lambda: 'upper'))
+    repl_class = attrib(default=Factory(lambda: SocialsRepl))
 
     def __attrs_post_init__(self):
         for name in ('normal', 'title', 'upper', 'lower'):
@@ -128,68 +192,37 @@ class SocialsFactory:
         """
         kwargs.setdefault('percent', '%')
         string = string.replace('%%', '{percent}')
-        strings = []  # The strings which will be returned.
+        strings = []  # The strings to be returned.
         replacements = [[] for p in perspectives]  # Formatter strings.
-        default_replacements = []  # The replacements shown to everyone else.
-
-        def repl(match):
-            """Match the suffix in the suffixes dictionary."""
-            whole, index, suffix, filter_name = match.groups()
-            if index:
-                index = int(index) - 1
-            else:
-                index = self.default_index
-            if not suffix:
-                suffix = self.default_suffix
-            try:
-                obj = perspectives[index]
-            except IndexError:
-                obj = self.no_object(index)  # May raise.
-            func = self.suffixes.get(suffix.lower(), None)
-            if func is None:
-                func = self.no_suffix(obj, suffix)  # May raise.
-            this, other = func(obj, suffix)
-            if not filter_name:
-                if suffix.istitle():
-                    filter_name = self.title_case_filter
-                elif suffix.isupper():
-                    filter_name = self.upper_case_filter
-                else:
-                    filter_name = self.lower_case_filter
-            if filter_name:
-                filter_func = self.filters.get(filter_name, None)
-                if filter_func is None:
-                    raise NoFilterError(f'Invalid filter: {filter_name}.')
-                this = filter_func(this)
-                other = filter_func(other)
-            for pos, perspective in enumerate(perspectives):
-                if obj is perspective:
-                    replacements[pos].append(this)
-                else:
-                    replacements[pos].append(other)
-            default_replacements.append(other)
-            return '{}'
-
-        default = re.sub(suffix_re, repl, string)
-        for args in replacements:
+        replacements.append([])  # Default replacements.
+        repl = self.repl_class(self, perspectives, replacements)
+        default = re.sub(suffix_re, repl.repl, string)
+        for args in repl.replacements:
             strings.append(default.format(*args, **kwargs))
-        strings.append(default.format(*default_replacements, **kwargs))
         return strings
 
     def no_object(self, index):
         """No object was found at the given index. By this point index will be
-        0-based."""
+        0-based. Should return either an object or raise an instance of
+        NoObjectError."""
         raise NoObjectError(
             f'{index + 1} is not in the list of objects.'
         )
 
     def no_suffix(self, obj, name):
-        """No suffix was found for obj with the given name."""
+        """No suffix was found for obj with the given name. Should either
+        return a function to be used as the suffix or raise an instance of
+        NoSuffixError."""
         raise NoSuffixError(
             '%s is not a valid suffix. Valid suffixes: %s.' % (
                 name, ', '.join(sorted(self.suffixes.keys()))
             )
         )
+
+    def no_filter(self, obj, name):
+        """Should either return a filter function or raise an instance of
+        NoFilterError."""
+        raise NoFilterError(f'Invalid filter: {name}.')
 
     def convert_emote_string(
         self, string, match, perspectives, *args, **kwargs
