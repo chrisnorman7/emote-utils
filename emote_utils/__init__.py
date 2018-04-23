@@ -300,9 +300,12 @@ class SocialsFactory:
         """Return a list of suffix objects."""
         d = {}
         for name, func in self.suffixes.items():
-            d[func] = d.get(func, [])
-            d[func].append(name)
-        return [Suffix(func, sorted(names)) for func, names in d.items()]
+            i = id(func)
+            args = d.get(i, [func, []])
+            args[-1].append(name)
+            args[-1] = sorted(args[-1])
+            d[i] = args
+        return [Suffix(*a) for a in d.values()]
 
     def get_filters(self):
         """Return all filters as a dictionary."""

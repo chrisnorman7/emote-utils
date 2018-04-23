@@ -85,11 +85,15 @@ def test_get_suffixes():
     assert isinstance(r[0], Suffix)
     assert isinstance(r[1], Suffix)
     assert r[0].func in [name, gender]
-    assert r[0].func in [name, gender]
     if r[0].func is name:
         assert r[0].names == ['n', 'name']
     else:
         assert r[0].names == ['his', 'her']
+    f.suffix('t', 's')(f.get_strings)
+    for suffix in f.get_suffixes():
+        if suffix.func is f.get_strings:
+            assert suffix.names == ['s', 't']
+            break
 
 
 def test_empty_filter_name():
