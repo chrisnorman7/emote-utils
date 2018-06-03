@@ -321,6 +321,7 @@ class PopulatedSocialsFactory(SocialsFactory):
         self.suffix('e', 'es')(self.get_es)
         self.suffix('y', 'ies')(self.get_y)
         self.suffix('are', 'is')(self.get_are)
+        self.suffix('have', 'has')(self.get_have)
 
     def get_s(self, obj, suffix):
         """"" or "s"."""
@@ -337,3 +338,7 @@ class PopulatedSocialsFactory(SocialsFactory):
     def get_are(self, obj, suffix):
         """"are" or "is"."""
         return ('are', 'is')
+
+    def get_have(self, obj, suffix):
+        """"have" or "has"."""
+        return ('have', 'has')

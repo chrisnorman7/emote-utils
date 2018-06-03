@@ -18,3 +18,9 @@ def test_y():
 
 def test_is():
     assert f.get_strings('%1are', [o]) == ['are', 'is']
+    assert f.get_strings('%1is', [o]) == ['are', 'is']
+
+
+def test_have():
+    assert f.get_strings('%1have', [o]) == ['have', 'has']
+    assert f.get_strings('%1has', [o]) == ['have', 'has']
