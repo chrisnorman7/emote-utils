@@ -49,6 +49,12 @@ class PretendObject:
         string, perspectives = f.convert_emote_string(
             string, self.do_match, perspectives
         )
+        return self.do_social(string, perspectives)
+
+    def do_social(
+        self, string: str, perspectives: List['PretendObject']
+    ) -> None:
+        """Have this object perform a social. Can be used by do_emote."""
         print(f'Social string: {string}')
         strings: List[str] = f.get_strings(string, perspectives)
         obj: 'PretendObject'
