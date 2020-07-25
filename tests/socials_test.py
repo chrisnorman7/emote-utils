@@ -1,43 +1,52 @@
+from typing import Any, List, Tuple
+
+from attr import attrs
 from pytest import raises
-from attr import attrs, attrib
-from emote_utils import (
-    SocialsFactory, NoSuffixError, NoObjectError, NoNamesError, Suffix
-)
+
+from emote_utils import (NoNamesError, NoObjectError, NoSuffixError,
+                         SocialsFactory, Suffix)
 
 
-@attrs
+def extra_suffix(obj: Any, suffix: str) -> Tuple[str, str]:
+    return ('test', 'ing')
+
+
+@attrs(auto_attribs=True)
 class PretendObject:
     """Test emotes with this object."""
 
-    name = attrib()
-    gender = attrib()
+    name: str
+    gender: str
 
 
 boy = PretendObject('Bill', 'his')
 girl = PretendObject('Jane', 'her')
-f = SocialsFactory()
+
+f: SocialsFactory = SocialsFactory()
 
 
 @f.suffix('name', 'n')
-def name(obj, suffix):
+def name(obj: PretendObject, suffix: str) -> Tuple[str, str]:
     return ('you', obj.name)
 
 
 @f.suffix('his', 'her')
-def gender(obj, suffix):
+def gender(obj: PretendObject, suffix: str) -> Tuple[str, str]:
     return ('your', obj.gender)
 
 
-def test_defaults():
+def test_defaults() -> None:
     assert SocialsFactory().suffixes == {}
-    assert f.default_index == 0
+    assert f.default_index == 1
     assert f.default_suffix == 'n'
 
 
 # get_strings tests.
 
-def test_one():
-    expected = ['you', boy.name]
+def test_one() -> None:
+    expected: List[str] = ['you', boy.name]
+    # Try all possible forms.
+    strings: List[str]
     strings = f.get_strings('%1n', [boy])
     assert strings == expected
     strings = f.get_strings('%1', [boy])
@@ -46,10 +55,12 @@ def test_one():
     assert strings == expected
 
 
-def test_multiple():
-    expected = [
+def test_multiple() -> None:
+    expected: List[str] = [
         f'you {girl.name}', f'{boy.name} you', f'{boy.name} {girl.name}'
     ]
+    # Try all possible forms.
+    strings: List[str]
     strings = f.get_strings('%1n %2n', [boy, girl])
     assert strings == expected
     strings = f.get_strings('%1n %2', [boy, girl])
@@ -58,51 +69,48 @@ def test_multiple():
     assert strings == expected
 
 
-def test_title():
-    strings = f.get_strings('%|title smiles.', [boy])
+def test_title() -> None:
+    strings: List[str] = f.get_strings('%|title smiles.', [boy])
     assert strings == ['You smiles.', 'Bill smiles.']
 
 
-def test_nameless_suffix():
+def test_nameless_suffix() -> None:
     with raises(NoNamesError):
         f.suffix()
 
 
-def test_suffix_error():
-    suffix = 'wontwork'
+def test_suffix_error() -> None:
     with raises(NoSuffixError):
-        f.get_strings(f'%1{suffix}', [boy])
+        f.get_strings('%1wontwork', [boy])
 
 
-def test_object_error():
+def test_object_error() -> None:
     with raises(NoObjectError):
         f.get_strings('%2n', [boy])
 
 
-def test_get_suffixes():
-    r = f.get_suffixes()
+def test_get_suffixes() -> None:
+    r: List[Suffix] = f.get_suffixes()
     assert len(r) == 2
     assert isinstance(r[0], Suffix)
     assert isinstance(r[1], Suffix)
-    assert r[0].func in [name, gender]
-    if r[0].func is name:
-        assert r[0].names == ['n', 'name']
-    else:
-        assert r[0].names == ['his', 'her']
-    f.suffix('t', 's')(f.get_strings)
-    for suffix in f.get_suffixes():
-        if suffix.func is f.get_strings:
-            assert suffix.names == ['s', 't']
-            break
+    assert r[0].func is name
+    assert r[0].names == ['n', 'name']
+    assert r[1].func is gender
+    assert r[1].names == ['her', 'his']
+    f.suffix('t', 's')(extra_suffix)
+    suffix = f.get_suffixes()[2]
+    assert suffix.func is extra_suffix
+    assert suffix.names == ['s', 't']
 
 
-def test_empty_filter_name():
-    expected = ['you', boy.name]
-    strings = f.get_strings('%1n|', [boy])
+def test_empty_filter_name() -> None:
+    expected: List[str] = ['you', boy.name]
+    strings: List[str] = f.get_strings('%1n|', [boy])
     assert strings == expected
 
 
-def test_filter():
-    expected = ['YOU', boy.name.upper()]
-    strings = f.get_strings('%1n|upper', [boy])
+def test_filter() -> None:
+    expected: List[str] = ['YOU', boy.name.upper()]
+    strings: List[str] = f.get_strings('%1n|upper', [boy])
     assert strings == expected
