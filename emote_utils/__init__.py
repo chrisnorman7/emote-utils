@@ -153,6 +153,8 @@ class SocialsFactory:
         def inner(func: FilterFunctionType) -> FilterFunctionType:
             name: str
             for name in names:
+                if name in self.filters:
+                    raise DuplicateNameError(name)
                 self.filters[name] = func
             return func
 
@@ -309,17 +311,16 @@ class SocialsFactory:
         self, string: str, match: MatchFunctionType, perspectives: List[Any]
     ) -> Tuple[str, List[Any]]:
         """Convert an emote string like
-        % smile%1s at {john}n
+        % smile%1s at {john}.
         to
         % smile%1s at %2n
         Returns (string, perspectives) ready to be fed into get_strings.
 
         The match function will be used to convert match strings to objects,
         and should return just the object. If it returns None, self.no_match
-        will be called with the same set of arguments.
-        All extra arguments and keyword arguments will be passed to the match
-        function after the match string.
-        The perspectives string will be extended by this function."""
+        will be called with the match string.
+
+        The perspectives string will be extended by extra matches."""
         string = sub(
             self.emote_re, lambda m: self.emote_repl(match, perspectives, m),
             string
